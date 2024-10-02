@@ -1,0 +1,80 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  version:
+    name: version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.emit.outputs.version }}
+    steps:
+      - id: checkout
+        name: checkout
+        uses: actions/checkout@v3
+      - id: emit
+        name: emit
+        run: |
+          echo "emitting version..."
+          [[ ${GITHUB_REF_TYPE} == "branch" ]] && {
+            LATEST=$(cat .version)
+            SHA=$(git rev-parse --short "${GITHUB_SHA}")
+            VERSION="${LATEST}-next-${SHA}"
+          }
+          [[ ${GITHUB_REF_TYPE} == "tag" ]] && {
+            VERSION="${GITHUB_REF_NAME}"
+          }
+          echo "emitted version ${VERSION}"
+          echo "::set-output name=version::${VERSION}"
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    needs: [ version ]
+    env:
+      DOCKER_REGISTRY_HOST: docker.io
+      DOCKER_REGISTRY_PATH: jhagestedt/azure-cli-unprivileged
+      DOCKER_REGISTRY_USERNAME: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+      DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - id: checkout
+        name: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: docker-login
+        name: docker-login
+        run: |
+          echo "${DOCKER_REGISTRY_PASSWORD}" | \
+          docker login "${DOCKER_REGISTRY_HOST}" \
+          --username "${DOCKER_REGISTRY_USERNAME}" \
+          --password-stdin
+      - id: docker-setup
+        name: docker-setup
+        run: |
+          docker buildx create \
+          --use \
+          --platform linux/amd64,linux/arm64
+      - id: docker-build
+        name: docker-build
+        run: |
+          docker buildx build . \
+          --push \
+          --tag "${DOCKER_REGISTRY_HOST}/${DOCKER_REGISTRY_PATH}:${VERSION}" \
+          --platform=linux/amd64,linux/arm64
+      - id: docker-build-latest
+        name: docker-build-latest
+        if: ${{ github.ref_type == 'tag' }}
+        run: |
+          docker buildx build . \
+          --push \
+          --tag "${DOCKER_REGISTRY_HOST}/${DOCKER_REGISTRY_PATH}:latest" \
+          --platform=linux/amd64,linux/arm64
