@@ -25,15 +25,16 @@ jobs:
         run: |
           echo "emitting version..."
           [[ ${GITHUB_REF_TYPE} == "branch" ]] && {
-            LATEST=$(cat .version)
+            LATEST_REV=$(git rev-list --tags --max-count=1)
+            LATEST_TAG=$(git describe --tags "${LATEST_REV}" 2> /dev/null || echo 0.0.1)
             SHA=$(git rev-parse --short "${GITHUB_SHA}")
-            VERSION="${LATEST}-next-${SHA}"
+            VERSION="${LATEST_TAG}-next-${SHA}"
           }
           [[ ${GITHUB_REF_TYPE} == "tag" ]] && {
             VERSION="${GITHUB_REF_NAME}"
           }
           echo "emitted version ${VERSION}"
-          echo "::set-output name=version::${VERSION}"
+          echo "VERSION=${VERSION}" >> "${GITHUB_OUTPUT}"
   build:
     name: build
     runs-on: ubuntu-latest
@@ -43,7 +44,7 @@ jobs:
       DOCKER_REGISTRY_PATH: jhagestedt/azure-cli-unprivileged
       DOCKER_REGISTRY_USERNAME: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
       DOCKER_REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
-      VERSION: ${{ needs.version.outputs.version }}
+      VERSION: ${{ needs.version.outputs.VERSION }}
     steps:
       - id: checkout
         name: checkout
