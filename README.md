@@ -1,6 +1,6 @@
 # azure-cli-unprivileged
 
-Just a small azure-cli-based container with user 1000:1000 to run `az` without root.
+Just a small azure-cli-based container with user `1000:1000` to run `az` without root.
 
 ## Usage
 
