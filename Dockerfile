@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/azure-cli:2.59.0
 
-RUN apk upgrade && apk add shadow
+RUN apk upgrade && apk add shadow openssl
 RUN addgroup -g 1000 azurecli
 RUN adduser -u 1000 -G azurecli -s /bin/bash -D azurecli
 RUN mkdir -p /home/azurecli/.azure && \
