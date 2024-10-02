@@ -19,7 +19,7 @@ jobs:
     steps:
       - id: checkout
         name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - id: emit
         name: emit
         run: |
